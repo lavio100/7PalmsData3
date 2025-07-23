@@ -27,13 +27,11 @@
         .header {
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 1rem;
-            /* Removed margin-bottom as the logo is removed */
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
         }
-        /* Removed .logo styles as the element is removed */
         .film-card {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -41,6 +39,7 @@
             padding: 1rem;
             cursor: pointer;
             transition: all 0.2s ease-in-out;
+            position: relative; /* Needed for copy button positioning */
         }
         .film-card:hover {
             background-color: #eff6ff;
@@ -76,19 +75,19 @@
         }
 
         /* Detail View Specific Styles (matching screenshot) */
-        #filmDetailView .bg-blue-50 { /* Override light blue background */
-            background-color: #1a202c; /* Dark background from screenshot */
-            color: #e2e8f0; /* Light text color */
+        #filmDetailView .bg-blue-50 {
+            background-color: #1a202c;
+            color: #e2e8f0;
         }
-        #filmDetailView h2 { /* Film title in detail view */
-            color: #000000; /* Changed to black as requested */
+        #filmDetailView h2 {
+            color: #000000;
         }
         #filmDetailView .detail-item strong {
-            color: #90cdf4; /* Lighter blue for labels */
+            color: #90cdf4;
         }
 
         .chart-card {
-            background-color: #2d3748; /* Slightly lighter dark background for cards */
+            background-color: #2d3748;
             border-radius: 8px;
             padding: 1.5rem;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
@@ -100,7 +99,7 @@
         .chart-card h3 {
             font-size: 1.25rem;
             font-weight: 600;
-            color: #90cdf4; /* Blue color for chart titles */
+            color: #90cdf4;
             margin-bottom: 1rem;
             text-align: center;
         }
@@ -114,13 +113,13 @@
         .outlets-licensed-total {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #63b3ed; /* Brighter blue for total */
+            color: #63b3ed;
         }
 
         /* Numerical Value Display */
         .numerical-value-container {
             width: 100%;
-            height: 100px; /* Adjusted height for numerical value */
+            height: 100px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -128,34 +127,34 @@
             margin-top: 1rem;
         }
         .numerical-value-display {
-            font-size: 2.5rem; /* Larger font for main value */
+            font-size: 2.5rem;
             font-weight: 700;
-            color: #e2e8f0; /* White text for value */
-            text-shadow: 0 0 5px rgba(0,0,0,0.7); /* Stronger shadow for readability */
+            color: #e2e8f0;
+            text-shadow: 0 0 5px rgba(0,0,0,0.7);
         }
 
 
         /* Circular Gauge Styles (for Outlets Pitched To) */
         .circular-gauge-container {
             position: relative;
-            width: 150px; /* Size of the gauge */
+            width: 150px;
             height: 150px;
             margin: 1rem auto;
         }
         .circular-gauge-svg {
-            transform: rotate(-90deg); /* Start from top */
+            transform: rotate(-90deg);
         }
         .gauge-background-arc {
             fill: none;
-            stroke: #4a5568; /* Darker grey for background arc */
+            stroke: #4a5568;
             stroke-width: 10px;
         }
         .gauge-fill-arc {
             fill: none;
-            stroke: #4299e1; /* Blue for fill arc */
+            stroke: #4299e1;
             stroke-width: 10px;
-            stroke-linecap: round; /* Rounded ends for the arc */
-            transition: stroke-dashoffset 0.5s ease-in-out; /* Smooth transition for fill */
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease-in-out;
         }
         .gauge-center-value {
             position: absolute;
@@ -164,15 +163,15 @@
             transform: translate(-50%, -50%);
             font-size: 1.8rem;
             font-weight: 700;
-            color: #e2e8f0; /* White text for value */
+            color: #e2e8f0;
         }
         .gauge-sub-label {
             position: absolute;
-            bottom: 20px; /* Adjust as needed */
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 0.8rem;
-            color: #a0aec0; /* Lighter grey for sub-label */
+            color: #a0aec0;
         }
         .gauge-label-bottom {
             font-size: 0.9rem;
@@ -192,7 +191,7 @@
                 grid-template-columns: repeat(3, 1fr);
             }
             .outlets-licensed-section {
-                grid-column: span 3; /* Make it span full width on large screens */
+                grid-column: span 3;
             }
         }
 
@@ -202,7 +201,7 @@
             top: 1rem;
             left: 50%;
             transform: translateX(-50%);
-            background-color: #4CAF50; /* Green background */
+            background-color: #4CAF50;
             color: white;
             padding: 10px 20px;
             border-radius: 8px;
@@ -210,9 +209,27 @@
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.5s ease-in-out;
-            pointer-events: none; /* Allows clicks to pass through */
+            pointer-events: none;
         }
         #messageBox.show {
+            opacity: 1;
+        }
+
+        .copy-link-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: rgba(0,0,0,0.4);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            z-index: 10;
+        }
+        .film-card:hover .copy-link-btn {
             opacity: 1;
         }
     </style>
@@ -220,7 +237,6 @@
 <body class="p-4">
     <div class="container">
         <header class="header">
-            <!-- Removed the logo image tag -->
             <h1 class="text-3xl font-bold">7 Palms Filmmaker Portal</h1>
         </header>
 
@@ -516,7 +532,7 @@
                 noFilmsMessage.classList.add('hidden');
             }
 
-            filmsToRender.forEach((film, index) => {
+            filmsToRender.forEach((film) => { // Removed 'index' as it's not used directly for showFilmDetail anymore
                 const filmTitle = film[headers[0]];
                 if (filmTitle) {
                     const filmCard = document.createElement('div');
@@ -526,11 +542,36 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500 ml-2" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                         </svg>
+                        <button class="copy-link-btn" data-film-title="${encodeURIComponent(filmTitle)}">Copy Link</button>
                     `;
-                    const originalIndex = filmsData.indexOf(film);
-                    filmCard.addEventListener('click', () => showFilmDetail(originalIndex));
+                    filmCard.addEventListener('click', (event) => {
+                        // Only navigate if the click is not on the copy button
+                        if (!event.target.classList.contains('copy-link-btn')) {
+                            showFilmDetail(film); // Pass the film object directly
+                        }
+                    });
                     filmList.appendChild(filmCard);
                 }
+            });
+
+            // Add event listeners for copy buttons after rendering
+            document.querySelectorAll('.copy-link-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation(); // Prevent film card click event
+                    const filmTitle = event.target.dataset.filmTitle;
+                    const currentBaseUrl = window.location.origin + window.location.pathname;
+                    const shareableUrl = `${currentBaseUrl}?filmTitle=${filmTitle}`;
+                    
+                    // Use document.execCommand('copy') for better compatibility in iframes
+                    const tempInput = document.createElement('input');
+                    document.body.appendChild(tempInput);
+                    tempInput.value = shareableUrl;
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+
+                    showMessageBox('Link copied to clipboard!', 'success');
+                });
             });
         }
 
@@ -694,11 +735,16 @@
 
         /**
          * Displays the detailed view for a selected film.
-         * @param {number} index - The index of the film in the filmsData array.
+         * @param {Object} filmObject - The film object to display.
          */
-        function showFilmDetail(index) {
-            const film = filmsData[index];
-            if (!film) return;
+        function showFilmDetail(filmObject) {
+            const film = filmObject; // Directly use the passed film object
+
+            if (!film) {
+                console.error("Film object is null or undefined in showFilmDetail.");
+                showFilmList(); // Fallback to list view
+                return;
+            }
 
             console.log('Current Film Data (from showFilmDetail):', film); // Crucial for debugging column names
 
@@ -827,8 +873,22 @@
                     filmListView.classList.remove('hidden');
                     filterFilms();
                     localStorage.setItem('googleSheetCsvUrl', url);
-                    // Start auto-refresh automatically after initial load
-                    startAutoRefresh();
+                    // Check for filmTitle parameter in URL on initial load
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const filmTitleParam = urlParams.get('filmTitle');
+                    if (filmTitleParam) {
+                        const decodedFilmTitle = decodeURIComponent(filmTitleParam);
+                        const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
+                        if (filmObjectFromParam) {
+                            showFilmDetail(filmObjectFromParam); // Pass the film object
+                        } else {
+                            console.warn(`Film with title "${decodedFilmTitle}" not found.`);
+                            showFilmList(); // Go to list if film not found
+                        }
+                    } else {
+                        // If no filmTitle param, start auto-refresh and show list
+                        startAutoRefresh();
+                    }
                 } else {
                     if (errorMessage.classList.contains('hidden')) {
                          errorMessage.textContent = 'No film data found in the CSV. Please check your sheet content or if it\'s empty.';
@@ -855,9 +915,9 @@
                     filterFilms();
                     if (!filmDetailView.classList.contains('hidden')) {
                         const currentFilmTitle = detailFilmTitle.textContent;
-                        const currentFilm = filmsData.find(f => f[headers[0]] === currentFilmTitle);
-                        if (currentFilm) {
-                            showFilmDetail(filmsData.indexOf(currentFilm));
+                        const currentFilmObject = filmsData.find(f => f[headers[0]] === currentFilmTitle);
+                        if (currentFilmObject) {
+                            showFilmDetail(currentFilmObject); // Pass the film object
                         } else {
                             showFilmList();
                         }
