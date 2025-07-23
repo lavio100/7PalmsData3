@@ -27,19 +27,13 @@
         .header {
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 1rem;
-            margin-bottom: 1.5rem;
+            /* Removed margin-bottom as the logo is removed */
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
         }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
+        /* Removed .logo styles as the element is removed */
         .film-card {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -226,10 +220,7 @@
 <body class="p-4">
     <div class="container">
         <header class="header">
-            <!-- 7 Palms Logo: Replace the src below with the public URL of your logo image. -->
-            <!-- You will need to host your logo image online (e.g., Google Drive, Imgur, your own web server) -->
-            <!-- and then paste that public URL here. The current URL is a placeholder. -->
-            <img src="http://googleusercontent.com/file_content/1" alt="7 Palms Entertainment Company Logo" class="logo" onerror="this.onerror=null; this.src='https://placehold.co/150x50/ADD8E6/000000?text=Logo+Missing';">
+            <!-- Removed the logo image tag -->
             <h1 class="text-3xl font-bold">7 Palms Filmmaker Portal</h1>
         </header>
 
@@ -380,9 +371,9 @@
 
         const filmDetailView = document.getElementById('filmDetailView');
         const backToListButton = document.getElementById('backToListButton');
-        const detailRefreshDataButton = document.getElementById('detailRefreshDataButton'); // New button
-        const detailStartAutoRefreshButton = document.getElementById('detailStartAutoRefreshButton'); // New button
-        const detailStopAutoRefreshButton = document.getElementById('detailStopAutoRefreshButton');   // New button
+        const detailRefreshDataButton = document.getElementById('detailRefreshDataButton');
+        const detailStartAutoRefreshButton = document.getElementById('detailStartAutoRefreshButton');
+        const detailStopAutoRefreshButton = document.getElementById('detailStopAutoRefreshButton');
         const detailFilmTitle = document.getElementById('detailFilmTitle');
         const filmDetails = document.getElementById('filmDetails');
         const otherDetailsContainer = document.getElementById('otherDetails');
@@ -916,4 +907,4 @@
         };
     </script>
 </body>
-</ht
+</html>
