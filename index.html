@@ -7,7 +7,7 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- D3.js for charts (still needed for circular gauge) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <style>
@@ -238,7 +238,8 @@
         </header>
 
         <!-- Data Source Input -->
-        <div id="data-source-section" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+        <!-- This section is now hidden as the URL is hardcoded -->
+        <div id="data-source-section" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm hidden">
             <p class="text-blue-800 text-sm mb-3">
                 <strong>Important:</strong> To use this portal, you need to publish your Google Sheet as a CSV file.
                 Go to your Google Sheet, click "File" > "Share" > "Publish to web". Select "Comma-separated values (.csv)"
@@ -361,11 +362,13 @@
         let filteredFilmsData = []; // New array for filtered results
         let autoRefreshInterval; // Variable to hold the interval ID
 
-        const csvUrlInput = document.getElementById('csvUrlInput');
-        const loadDataButton = document.getElementById('loadDataButton');
+        // Hardcoded Google Sheet URL
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1CnLZNyYyPTdnhwSVRgCtXQDeZCMC-HbqyqtPqusvYro/gviz/tq?tqx=out:csv&sheet=Databox%20Portal%20Information%201';
+
+        // Removed csvUrlInput and loadDataButton as they are no longer needed in HTML
         const loadingMessage = document.getElementById('loadingMessage');
         const errorMessage = document.getElementById('errorMessage');
-        const dataSourceSection = document.getElementById('data-source-section');
+        const dataSourceSection = document.getElementById('data-source-section'); // Still needed to hide
 
         const filmListView = document.getElementById('filmListView');
         const filmList = document.getElementById('filmList');
@@ -878,20 +881,20 @@
 
 
         /**
-         * Handles the initial data load from the URL input.
+         * Handles the initial data load from the hardcoded URL.
          */
         async function handleLoadData() {
-            const url = csvUrlInput.value.trim();
+            const url = GOOGLE_SHEET_CSV_URL; // Use the hardcoded URL
             if (url) {
                 filmsData = await fetchCSVData(url);
                 if (filmsData.length > 0) {
-                    localStorage.setItem('googleSheetCsvUrl', url);
+                    dataSourceSection.classList.add('hidden'); // Hide the input section
+                    
                     const urlParams = new URLSearchParams(window.location.search);
                     const filmTitleParam = urlParams.get('filmTitle');
 
                     if (filmTitleParam) {
                         // If filmTitle param exists, try to show detail directly
-                        dataSourceSection.classList.add('hidden'); // Hide input section
                         filmListView.classList.add('hidden'); // Hide list view
                         filmDetailView.classList.remove('hidden'); // Show detail view
                         backToListButton.classList.add('hidden'); // Hide back button for direct embeds
@@ -901,7 +904,6 @@
                         detailStartAutoRefreshButton.classList.add('hidden');
                         detailStopAutoRefreshButton.classList.add('hidden');
 
-
                         const decodedFilmTitle = decodeURIComponent(filmTitleParam);
                         const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
                         if (filmObjectFromParam) {
@@ -909,19 +911,17 @@
                         } else {
                             console.warn(`Film with title "${decodedFilmTitle}" not found. Showing list view.`);
                             // If film not found, fallback to list view and enable auto-refresh
-                            dataSourceSection.classList.remove('hidden'); // Show data source input again
                             filmListView.classList.remove('hidden');
                             filmDetailView.classList.add('hidden');
                             filterFilms();
                             startAutoRefresh();
                         }
                     } else {
-                        // If no filmTitle param, show data source input, then list view and start auto-refresh
-                        dataSourceSection.classList.remove('hidden'); // Show data source input initially
-                        filmListView.classList.add('hidden'); // Keep list hidden until data is loaded
-                        filmDetailView.classList.add('hidden'); // Keep detail hidden
-                        filterFilms(); // Initial filter (empty search)
-                        startAutoRefresh(); // Start auto-refresh
+                        // If no filmTitle param, show list view and start auto-refresh
+                        filmListView.classList.remove('hidden');
+                        filmDetailView.classList.add('hidden');
+                        filterFilms();
+                        startAutoRefresh();
                     }
                 } else {
                     if (errorMessage.classList.contains('hidden')) {
@@ -930,7 +930,8 @@
                     }
                 }
             } else {
-                errorMessage.textContent = 'Please enter a valid Google Sheet CSV URL.';
+                // This else block should theoretically not be reached now that URL is hardcoded
+                errorMessage.textContent = 'Error: Google Sheet URL is not defined.';
                 errorMessage.classList.remove('hidden');
             }
         }
@@ -940,7 +941,7 @@
          */
         async function handleRefreshData() {
             console.log('Refresh Data initiated.');
-            const url = csvUrlInput.value.trim();
+            const url = GOOGLE_SHEET_CSV_URL; // Use the hardcoded URL for refresh
             if (url) {
                 const oldFilmsData = JSON.stringify(filmsData); // Store current data as string for comparison
                 filmsData = await fetchCSVData(url);
@@ -969,15 +970,15 @@
                     showMessageBox('Data refresh failed or returned no data.', 'error');
                 }
             } else {
-                console.error("Cannot refresh: No URL found to refresh data. Please load data first.");
-                errorMessage.textContent = "Cannot refresh: No CSV URL has been loaded yet. Please enter and load a URL first.";
+                console.error("Cannot refresh: Google Sheet URL is not defined.");
+                errorMessage.textContent = "Cannot refresh: Google Sheet URL is not defined.";
                 errorMessage.classList.remove('hidden');
                 showMessageBox('Cannot refresh: No URL provided.', 'error');
             }
         }
 
         // Event Listeners
-        loadDataButton.addEventListener('click', handleLoadData);
+        // Removed loadDataButton event listener as it's no longer needed
         refreshDataButton.addEventListener('click', handleRefreshData);
         startAutoRefreshButton.addEventListener('click', startAutoRefresh);
         stopAutoRefreshButton.addEventListener('click', stopAutoRefresh);
@@ -990,13 +991,9 @@
         document.getElementById('detailStopAutoRefreshButton').addEventListener('click', stopAutoRefresh);
 
 
-        // Optional: Load data automatically if a URL is present in localStorage (for persistence)
+        // Initial load of data when the page loads
         window.onload = function() {
-            const storedUrl = localStorage.getItem('googleSheetCsvUrl');
-            if (storedUrl) {
-                csvUrlInput.value = storedUrl;
-                handleLoadData();
-            }
+            handleLoadData();
         };
     </script>
 </body>
