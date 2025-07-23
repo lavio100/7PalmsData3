@@ -567,9 +567,7 @@
 
             const listHtml = `
                 <div class="text-left w-full mb-2">
-                    <span class="outlets-licensed-display">The ${film[headers[0]]} (</span>
                     <span class="outlets-licensed-display">${outlets.join(', ')}</span>
-                    <span class="outlets-licensed-display">)</span>
                 </div>
                 <div class="text-left w-full">
                     <span class="outlets-licensed-display">Number of Outlets Licensed:</span>
@@ -603,7 +601,7 @@
 
             const listHtml = `
                 <div class="text-left w-full text-sm text-gray-300 mb-2">
-                    (${outlets.join(', ')})
+                    ${outlets.join(', ')}
                 </div>
                 <div class="text-left w-full text-sm text-gray-300">
                     Number of Outlets Pitched: <span class="text-base font-semibold text-blue-300">${numberOfOutletsPitched.toLocaleString('en-US')}</span>
@@ -877,7 +875,7 @@
                     if (oldFilmsData !== JSON.stringify(filmsData)) {
                         showMessageBox('Data refreshed successfully!', 'success');
                     }
-                    console.log('Data refresh completed.');
+                    console.log('Data refreshed successfully.');
                 } else {
                     if (errorMessage.classList.contains('hidden')) {
                         errorMessage.textContent = 'No film data found after refresh. The sheet might be empty or inaccessible.';
@@ -918,4 +916,4 @@
         };
     </script>
 </body>
-</html>
+</ht
