@@ -225,15 +225,10 @@
             border-radius: 6px;
             font-size: 0.75rem;
             cursor: pointer;
-            /* Changed opacity to 1 so it's always visible */
-            opacity: 1;
+            opacity: 1; /* Always visible now */
             transition: opacity 0.2s ease-in-out;
             z-index: 10;
         }
-        /* Removed hover effect for copy button as it's always visible now */
-        /* .film-card:hover .copy-link-btn {
-            opacity: 1;
-        } */
     </style>
 </head>
 <body class="p-4">
@@ -801,6 +796,14 @@
 
             filmListView.classList.add('hidden');
             filmDetailView.classList.remove('hidden');
+
+            // Hide the back to list button if loaded directly via URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('filmTitle')) {
+                backToListButton.classList.add('hidden');
+            } else {
+                backToListButton.classList.remove('hidden');
+            }
         }
 
         /**
@@ -826,6 +829,13 @@
 
             // Stop auto-refresh when going back to list
             stopAutoRefresh();
+
+            // Clear filmTitle parameter from URL if present
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('filmTitle')) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            backToListButton.classList.remove('hidden'); // Ensure back button is visible when returning to list
         }
 
         /**
@@ -871,24 +881,31 @@
             if (url) {
                 filmsData = await fetchCSVData(url);
                 if (filmsData.length > 0) {
-                    dataSourceSection.classList.add('hidden');
-                    filmListView.classList.remove('hidden');
-                    filterFilms();
                     localStorage.setItem('googleSheetCsvUrl', url);
-                    // Check for filmTitle parameter in URL on initial load
                     const urlParams = new URLSearchParams(window.location.search);
                     const filmTitleParam = urlParams.get('filmTitle');
+
                     if (filmTitleParam) {
+                        // If filmTitle param exists, try to show detail directly
+                        dataSourceSection.classList.add('hidden'); // Hide input section
+                        filmListView.classList.add('hidden'); // Hide list view
+                        filmDetailView.classList.remove('hidden'); // Show detail view
+                        backToListButton.classList.add('hidden'); // Hide back button for direct embeds
+
                         const decodedFilmTitle = decodeURIComponent(filmTitleParam);
                         const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
                         if (filmObjectFromParam) {
                             showFilmDetail(filmObjectFromParam); // Pass the film object
                         } else {
-                            console.warn(`Film with title "${decodedFilmTitle}" not found.`);
-                            showFilmList(); // Go to list if film not found
+                            console.warn(`Film with title "${decodedFilmTitle}" not found. Showing list view.`);
+                            showFilmList(); // Fallback to list view if film not found
+                            startAutoRefresh(); // Start auto-refresh if falling back to list
                         }
                     } else {
-                        // If no filmTitle param, start auto-refresh and show list
+                        // If no filmTitle param, show list view and start auto-refresh
+                        dataSourceSection.classList.add('hidden');
+                        filmListView.classList.remove('hidden');
+                        filterFilms();
                         startAutoRefresh();
                     }
                 } else {
