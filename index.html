@@ -7,7 +7,7 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- D3.js for charts (still needed for circular gauge) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <style>
@@ -885,54 +885,55 @@
          */
         async function handleLoadData() {
             const url = GOOGLE_SHEET_CSV_URL; // Use the hardcoded URL
-            if (url) {
-                filmsData = await fetchCSVData(url);
-                if (filmsData.length > 0) {
-                    dataSourceSection.classList.add('hidden'); // Hide the input section
-                    
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const filmTitleParam = urlParams.get('filmTitle');
+            if (!url) { // Added check for URL existence
+                errorMessage.textContent = 'Error: Google Sheet URL is not defined.';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
 
-                    if (filmTitleParam) {
-                        // If filmTitle param exists, try to show detail directly
-                        filmListView.classList.add('hidden'); // Hide list view
-                        filmDetailView.classList.remove('hidden'); // Show detail view
-                        backToListButton.classList.add('hidden'); // Hide back button for direct embeds
+            filmsData = await fetchCSVData(url); // Always fetch data first
 
-                        // Hide auto-refresh buttons in detail view for direct embeds
-                        detailRefreshDataButton.classList.add('hidden');
-                        detailStartAutoRefreshButton.classList.add('hidden');
-                        detailStopAutoRefreshButton.classList.add('hidden');
+            if (filmsData.length > 0) {
+                dataSourceSection.classList.add('hidden'); // Hide the input section
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const filmTitleParam = urlParams.get('filmTitle');
 
-                        const decodedFilmTitle = decodeURIComponent(filmTitleParam);
-                        const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
-                        if (filmObjectFromParam) {
-                            showFilmDetail(filmObjectFromParam); // Pass the film object
-                        } else {
-                            console.warn(`Film with title "${decodedFilmTitle}" not found. Showing list view.`);
-                            // If film not found, fallback to list view and enable auto-refresh
-                            filmListView.classList.remove('hidden');
-                            filmDetailView.classList.add('hidden');
-                            filterFilms();
-                            startAutoRefresh();
-                        }
+                if (filmTitleParam) {
+                    // If filmTitle param exists, try to show detail directly
+                    filmListView.classList.add('hidden'); // Hide list view
+                    filmDetailView.classList.remove('hidden'); // Show detail view
+                    backToListButton.classList.add('hidden'); // Hide back button for direct embeds
+
+                    // Hide auto-refresh buttons in detail view for direct embeds
+                    detailRefreshDataButton.classList.add('hidden');
+                    detailStartAutoRefreshButton.classList.add('hidden');
+                    detailStopAutoRefreshButton.classList.add('hidden');
+
+                    const decodedFilmTitle = decodeURIComponent(filmTitleParam);
+                    const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
+                    if (filmObjectFromParam) {
+                        showFilmDetail(filmObjectFromParam); // Pass the film object
                     } else {
-                        // If no filmTitle param, show list view and start auto-refresh
+                        console.warn(`Film with title "${decodedFilmTitle}" not found. Showing list view.`);
+                        // If film not found, fallback to list view and enable auto-refresh
                         filmListView.classList.remove('hidden');
                         filmDetailView.classList.add('hidden');
                         filterFilms();
                         startAutoRefresh();
                     }
                 } else {
-                    if (errorMessage.classList.contains('hidden')) {
-                         errorMessage.textContent = 'No film data found in the CSV. Please check your sheet content or if it\'s empty.';
-                         errorMessage.classList.remove('hidden');
-                    }
+                    // If no filmTitle param, show list view and start auto-refresh
+                    filmListView.classList.remove('hidden');
+                    filmDetailView.classList.add('hidden');
+                    filterFilms();
+                    startAutoRefresh();
                 }
             } else {
-                // This else block should theoretically not be reached now that URL is hardcoded
-                errorMessage.textContent = 'Error: Google Sheet URL is not defined.';
-                errorMessage.classList.remove('hidden');
+                if (errorMessage.classList.contains('hidden')) {
+                     errorMessage.textContent = 'No film data found in the CSV. Please check your sheet content or if it\'s empty.';
+                     errorMessage.classList.remove('hidden');
+                }
             }
         }
 
@@ -942,38 +943,39 @@
         async function handleRefreshData() {
             console.log('Refresh Data initiated.');
             const url = GOOGLE_SHEET_CSV_URL; // Use the hardcoded URL for refresh
-            if (url) {
-                const oldFilmsData = JSON.stringify(filmsData); // Store current data as string for comparison
-                filmsData = await fetchCSVData(url);
-
-                if (filmsData.length > 0) {
-                    filterFilms();
-                    if (!filmDetailView.classList.contains('hidden')) {
-                        const currentFilmTitle = detailFilmTitle.textContent;
-                        const currentFilmObject = filmsData.find(f => f[headers[0]] === currentFilmTitle);
-                        if (currentFilmObject) {
-                            showFilmDetail(currentFilmObject); // Pass the film object
-                        } else {
-                            showFilmList();
-                        }
-                    }
-                    // Only show success message if data actually changed
-                    if (oldFilmsData !== JSON.stringify(filmsData)) {
-                        showMessageBox('Data refreshed successfully!', 'success');
-                    }
-                    console.log('Data refreshed successfully.');
-                } else {
-                    if (errorMessage.classList.contains('hidden')) {
-                        errorMessage.textContent = 'No film data found after refresh. The sheet might be empty or inaccessible.';
-                    }
-                    errorMessage.classList.remove('hidden');
-                    showMessageBox('Data refresh failed or returned no data.', 'error');
-                }
-            } else {
+            if (!url) { // Added check for URL existence
                 console.error("Cannot refresh: Google Sheet URL is not defined.");
                 errorMessage.textContent = "Cannot refresh: Google Sheet URL is not defined.";
                 errorMessage.classList.remove('hidden');
                 showMessageBox('Cannot refresh: No URL provided.', 'error');
+                return;
+            }
+
+            const oldFilmsData = JSON.stringify(filmsData); // Store current data as string for comparison
+            filmsData = await fetchCSVData(url);
+
+            if (filmsData.length > 0) {
+                filterFilms();
+                if (!filmDetailView.classList.contains('hidden')) {
+                    const currentFilmTitle = detailFilmTitle.textContent;
+                    const currentFilmObject = filmsData.find(f => f[headers[0]] === currentFilmTitle);
+                    if (currentFilmObject) {
+                        showFilmDetail(currentFilmObject); // Pass the film object
+                    } else {
+                        showFilmList();
+                    }
+                }
+                // Only show success message if data actually changed
+                if (oldFilmsData !== JSON.stringify(filmsData)) {
+                    showMessageBox('Data refreshed successfully!', 'success');
+                }
+                console.log('Data refreshed successfully.');
+            } else {
+                if (errorMessage.classList.contains('hidden')) {
+                    errorMessage.textContent = 'No film data found after refresh. The sheet might be empty or inaccessible.';
+                }
+                errorMessage.classList.remove('hidden');
+                showMessageBox('Data refresh failed or returned no data.', 'error');
             }
         }
 
