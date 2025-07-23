@@ -244,14 +244,6 @@
                 Go to your Google Sheet, click "File" > "Share" > "Publish to web". Select "Comma-separated values (.csv)"
                 from the dropdown for the entire document or a specific sheet, then click "Publish". Copy the generated URL and paste it below.
             </p>
-            <p class="text-blue-800 text-sm mb-3">
-                **Troubleshooting Tip:** If you encounter "Load failed" errors, try using the Google Sheets `gviz/tq` export URL.
-                To get this URL:
-                1. Find your Sheet ID from your Google Sheet's URL (e.g., `https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=0`).
-                2. Find your Sheet Name (the tab name, e.g., `Sheet1`).
-                3. Construct the URL: `https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/gviz/tq?tqx=out:csv&sheet=YOUR_SHEET_NAME`
-                This format is often more reliable for programmatic access due to CORS policies.
-            </p>
             <div class="flex flex-col sm:flex-row items-center gap-3">
                 <input type="url" id="csvUrlInput" placeholder="Enter your Google Sheet CSV URL here"
                        class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 w-full sm:w-auto">
@@ -477,10 +469,11 @@
             errorMessage.classList.add('hidden');
             console.log('Attempting to fetch CSV from:', url);
             try {
-                const response = await fetch(url, { mode: 'cors' });
+                // Added cache: 'no-store' to ensure fresh data and referrerPolicy
+                const response = await fetch(url, { mode: 'cors', cache: 'no-store', referrerPolicy: 'no-referrer' });
                 console.log('Fetch response status:', response.status, response.statusText);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}.`);
+                    throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}. Please ensure the URL is correct and the Google Sheet is published publicly.`);
                 }
                 const csvText = await response.text();
                 const parsedData = parseCSV(csvText);
@@ -490,11 +483,7 @@
             } catch (error) {
                 console.error('Failed to fetch CSV:', error);
                 loadingMessage.classList.add('hidden');
-                if (error instanceof TypeError && error.message === 'Failed to fetch') {
-                    errorMessage.textContent = 'Network error: Could not connect to the CSV URL. This is often due to a **CORS (Cross-Origin Resource Sharing) issue** or an incorrect URL. Please ensure your Google Sheet is published to the web and accessible, and try the alternative `gviz/tq` URL format mentioned above. Check your browser\'s console (F12) for more details.';
-                } else {
-                    errorMessage.textContent = `Error loading data: ${error.message}`;
-                }
+                errorMessage.textContent = `Error loading data: ${error.message}. Please ensure the Google Sheet is published to web as CSV and the URL is correct. If you're encountering a 'Failed to fetch' error, try using the Google Sheets gviz/tq export URL format.`;
                 errorMessage.classList.remove('hidden');
                 return [];
             }
@@ -801,8 +790,23 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('filmTitle')) {
                 backToListButton.classList.add('hidden');
+                // Also hide auto-refresh buttons in detail view if it's a direct embed
+                detailRefreshDataButton.classList.add('hidden');
+                detailStartAutoRefreshButton.classList.add('hidden');
+                detailStopAutoRefreshButton.classList.add('hidden');
             } else {
                 backToListButton.classList.remove('hidden');
+                // Show auto-refresh buttons if not a direct embed
+                detailRefreshDataButton.classList.remove('hidden');
+                detailStartAutoRefreshButton.classList.remove('hidden');
+                // Keep detailStopAutoRefreshButton hidden initially, only show if auto-refresh is active
+                if (autoRefreshInterval) {
+                    detailStopAutoRefreshButton.classList.remove('hidden');
+                    detailStartAutoRefreshButton.classList.add('hidden');
+                } else {
+                    detailStopAutoRefreshButton.classList.add('hidden');
+                    detailStartAutoRefreshButton.classList.remove('hidden');
+                }
             }
         }
 
@@ -892,21 +896,32 @@
                         filmDetailView.classList.remove('hidden'); // Show detail view
                         backToListButton.classList.add('hidden'); // Hide back button for direct embeds
 
+                        // Hide auto-refresh buttons in detail view for direct embeds
+                        detailRefreshDataButton.classList.add('hidden');
+                        detailStartAutoRefreshButton.classList.add('hidden');
+                        detailStopAutoRefreshButton.classList.add('hidden');
+
+
                         const decodedFilmTitle = decodeURIComponent(filmTitleParam);
                         const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
                         if (filmObjectFromParam) {
                             showFilmDetail(filmObjectFromParam); // Pass the film object
                         } else {
                             console.warn(`Film with title "${decodedFilmTitle}" not found. Showing list view.`);
-                            showFilmList(); // Fallback to list view if film not found
-                            startAutoRefresh(); // Start auto-refresh if falling back to list
+                            // If film not found, fallback to list view and enable auto-refresh
+                            dataSourceSection.classList.remove('hidden'); // Show data source input again
+                            filmListView.classList.remove('hidden');
+                            filmDetailView.classList.add('hidden');
+                            filterFilms();
+                            startAutoRefresh();
                         }
                     } else {
-                        // If no filmTitle param, show list view and start auto-refresh
-                        dataSourceSection.classList.add('hidden');
-                        filmListView.classList.remove('hidden');
-                        filterFilms();
-                        startAutoRefresh();
+                        // If no filmTitle param, show data source input, then list view and start auto-refresh
+                        dataSourceSection.classList.remove('hidden'); // Show data source input initially
+                        filmListView.classList.add('hidden'); // Keep list hidden until data is loaded
+                        filmDetailView.classList.add('hidden'); // Keep detail hidden
+                        filterFilms(); // Initial filter (empty search)
+                        startAutoRefresh(); // Start auto-refresh
                     }
                 } else {
                     if (errorMessage.classList.contains('hidden')) {
@@ -949,7 +964,6 @@
                 } else {
                     if (errorMessage.classList.contains('hidden')) {
                         errorMessage.textContent = 'No film data found after refresh. The sheet might be empty or inaccessible.';
-                        console.warn('Data refresh resulted in no films or an empty sheet.');
                     }
                     errorMessage.classList.remove('hidden');
                     showMessageBox('Data refresh failed or returned no data.', 'error');
