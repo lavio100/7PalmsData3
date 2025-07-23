@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Film Data Portal</title>
+    <title>7 Palms Filmmaker Portal</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- D3.js for charts (still needed for circular gauge) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -26,6 +28,17 @@
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 1rem;
             margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
         .film-card {
             background-color: #f8fafc;
@@ -49,9 +62,9 @@
         }
         /* Custom scrollbar for film list */
         .film-list-container {
-            max-height: 60vh; /* Limit height to enable scrolling */
+            max-height: 60vh;
             overflow-y: auto;
-            padding-right: 10px; /* Space for scrollbar */
+            padding-right: 10px;
         }
         .film-list-container::-webkit-scrollbar {
             width: 8px;
@@ -67,11 +80,158 @@
         .film-list-container::-webkit-scrollbar-thumb:hover {
             background: #a0aec0;
         }
+
+        /* Detail View Specific Styles (matching screenshot) */
+        #filmDetailView .bg-blue-50 { /* Override light blue background */
+            background-color: #1a202c; /* Dark background from screenshot */
+            color: #e2e8f0; /* Light text color */
+        }
+        #filmDetailView h2 { /* Film title in detail view */
+            color: #000000; /* Changed to black as requested */
+        }
+        #filmDetailView .detail-item strong {
+            color: #90cdf4; /* Lighter blue for labels */
+        }
+
+        .chart-card {
+            background-color: #2d3748; /* Slightly lighter dark background for cards */
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #90cdf4; /* Blue color for chart titles */
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        /* Outlets Licensed To - Text Display */
+        .outlets-licensed-display {
+            font-size: 1.1rem;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+        .outlets-licensed-total {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #63b3ed; /* Brighter blue for total */
+        }
+
+        /* Numerical Value Display */
+        .numerical-value-container {
+            width: 100%;
+            height: 100px; /* Adjusted height for numerical value */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-top: 1rem;
+        }
+        .numerical-value-display {
+            font-size: 2.5rem; /* Larger font for main value */
+            font-weight: 700;
+            color: #e2e8f0; /* White text for value */
+            text-shadow: 0 0 5px rgba(0,0,0,0.7); /* Stronger shadow for readability */
+        }
+
+
+        /* Circular Gauge Styles (for Outlets Pitched To) */
+        .circular-gauge-container {
+            position: relative;
+            width: 150px; /* Size of the gauge */
+            height: 150px;
+            margin: 1rem auto;
+        }
+        .circular-gauge-svg {
+            transform: rotate(-90deg); /* Start from top */
+        }
+        .gauge-background-arc {
+            fill: none;
+            stroke: #4a5568; /* Darker grey for background arc */
+            stroke-width: 10px;
+        }
+        .gauge-fill-arc {
+            fill: none;
+            stroke: #4299e1; /* Blue for fill arc */
+            stroke-width: 10px;
+            stroke-linecap: round; /* Rounded ends for the arc */
+            transition: stroke-dashoffset 0.5s ease-in-out; /* Smooth transition for fill */
+        }
+        .gauge-center-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #e2e8f0; /* White text for value */
+        }
+        .gauge-sub-label {
+            position: absolute;
+            bottom: 20px; /* Adjust as needed */
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            color: #a0aec0; /* Lighter grey for sub-label */
+        }
+        .gauge-label-bottom {
+            font-size: 0.9rem;
+            color: #a0aec0;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        /* Responsive adjustments for charts */
+        @media (min-width: 640px) {
+            .charts-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (min-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .outlets-licensed-section {
+                grid-column: span 3; /* Make it span full width on large screens */
+            }
+        }
+
+        /* Message Box for Refresh Confirmation */
+        #messageBox {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50; /* Green background */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none; /* Allows clicks to pass through */
+        }
+        #messageBox.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="p-4">
     <div class="container">
-        <h1 class="text-3xl font-bold text-center mb-6 header">Film Data Portal</h1>
+        <header class="header">
+            <!-- 7 Palms Logo: Replace the src below with the public URL of your logo image. -->
+            <!-- You will need to host your logo image online (e.g., Google Drive, Imgur, your own web server) -->
+            <!-- and then paste that public URL here. The current URL is a placeholder. -->
+            <img src="http://googleusercontent.com/file_content/1" alt="7 Palms Entertainment Company Logo" class="logo" onerror="this.onerror=null; this.src='https://placehold.co/150x50/ADD8E6/000000?text=Logo+Missing';">
+            <h1 class="text-3xl font-bold">7 Palms Filmmaker Portal</h1>
+        </header>
 
         <!-- Data Source Input -->
         <div id="data-source-section" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
@@ -79,6 +239,14 @@
                 <strong>Important:</strong> To use this portal, you need to publish your Google Sheet as a CSV file.
                 Go to your Google Sheet, click "File" > "Share" > "Publish to web". Select "Comma-separated values (.csv)"
                 from the dropdown for the entire document or a specific sheet, then click "Publish". Copy the generated URL and paste it below.
+            </p>
+            <p class="text-blue-800 text-sm mb-3">
+                **Troubleshooting Tip:** If you encounter "Load failed" errors, try using the Google Sheets `gviz/tq` export URL.
+                To get this URL:
+                1. Find your Sheet ID from your Google Sheet's URL (e.g., `https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=0`).
+                2. Find your Sheet Name (the tab name, e.g., `Sheet1`).
+                3. Construct the URL: `https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/gviz/tq?tqx=out:csv&sheet=YOUR_SHEET_NAME`
+                This format is often more reliable for programmatic access due to CORS policies.
             </p>
             <div class="flex flex-col sm:flex-row items-center gap-3">
                 <input type="url" id="csvUrlInput" placeholder="Enter your Google Sheet CSV URL here"
@@ -96,10 +264,25 @@
         <div id="filmListView" class="hidden">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-semibold text-gray-800">Available Films</h2>
-                <button id="refreshDataButton"
-                        class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
-                    Refresh Data
-                </button>
+                <div class="flex gap-2">
+                    <button id="refreshDataButton"
+                            class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                        Refresh Data
+                    </button>
+                    <button id="startAutoRefreshButton"
+                            class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                        Start Auto-Refresh
+                    </button>
+                    <button id="stopAutoRefreshButton"
+                            class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md hidden">
+                        Stop Auto-Refresh
+                    </button>
+                </div>
+            </div>
+            <!-- Search Bar -->
+            <div class="mb-4">
+                <input type="text" id="searchBar" placeholder="Search films by title..."
+                       class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
             </div>
             <div id="filmList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 film-list-container">
                 <!-- Film cards will be rendered here -->
@@ -109,21 +292,79 @@
 
         <!-- Film Detail View -->
         <div id="filmDetailView" class="hidden">
-            <button id="backToListButton"
-                    class="mb-6 px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
-                &larr; Back to List
-            </button>
+            <div class="flex justify-between items-center mb-4">
+                <button id="backToListButton"
+                        class="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                    &larr; Back to List
+                </button>
+                <div class="flex gap-2">
+                    <button id="detailRefreshDataButton"
+                            class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                        Refresh Data
+                    </button>
+                    <button id="detailStartAutoRefreshButton"
+                            class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                        Start Auto-Refresh
+                    </button>
+                    <button id="detailStopAutoRefreshButton"
+                            class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md hidden">
+                        Stop Auto-Refresh
+                    </button>
+                </div>
+            </div>
             <h2 id="detailFilmTitle" class="text-3xl font-bold text-gray-800 mb-4"></h2>
-            <div id="filmDetails" class="bg-blue-50 p-6 rounded-lg shadow-inner">
-                <!-- Film details will be rendered here -->
+            <div id="filmDetails" class="p-6 rounded-lg shadow-inner">
+                <!-- Outlets Licensed To Section -->
+                <div id="outletsLicensedSection" class="chart-card mb-4 outlets-licensed-section hidden">
+                    <h3>Outlets Licensed To</h3>
+                    <div id="outletsLicensedContent" class="w-full text-center">
+                        <!-- Content will be rendered here -->
+                    </div>
+                </div>
+
+                <div id="chartsGridContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 charts-grid hidden">
+                    <!-- Revenue Earned Numerical Value -->
+                    <div id="revenueEarnedSection" class="chart-card">
+                        <h3>Revenue Earned (Gross)</h3>
+                        <div id="revenueEarnedNumericalValueContainer" class="numerical-value-container"></div>
+                    </div>
+
+                    <!-- Outlets Pitched To Gauge and List -->
+                    <div id="outletsPitchedSection" class="chart-card">
+                        <h3>Outlets Pitched To</h3>
+                        <div id="outletsPitchedGaugeContainer" class="circular-gauge-container"></div>
+                        <div id="outletsPitchedListContent" class="w-full text-center mt-4">
+                            <!-- List of pitched outlets will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Program Expenses Numerical Value -->
+                    <div id="expensesSection" class="chart-card">
+                        <h3>Program Expenses (USD)</h3>
+                        <div id="expensesNumericalValueContainer" class="numerical-value-container"></div>
+                    </div>
+                </div>
+
+                <!-- Other general details below the charts -->
+                <div id="otherDetails" class="mt-6 p-4 bg-gray-700 rounded-lg hidden">
+                    <h3 class="text-xl font-semibold text-gray-100 mb-4">Additional Details</h3>
+                    <!-- Other details will be rendered here -->
+                </div>
+
             </div>
         </div>
     </div>
+
+    <!-- Message Box for Refresh Confirmation -->
+    <div id="messageBox" class="text-center"></div>
 
     <script>
         // Global variables for data and UI elements
         let filmsData = [];
         let headers = [];
+        let filteredFilmsData = []; // New array for filtered results
+        let autoRefreshInterval; // Variable to hold the interval ID
+
         const csvUrlInput = document.getElementById('csvUrlInput');
         const loadDataButton = document.getElementById('loadDataButton');
         const loadingMessage = document.getElementById('loadingMessage');
@@ -133,12 +374,44 @@
         const filmListView = document.getElementById('filmListView');
         const filmList = document.getElementById('filmList');
         const refreshDataButton = document.getElementById('refreshDataButton');
-        const noFilmsMessage = document.getElementById('noFilmsMessage');
+        const startAutoRefreshButton = document.getElementById('startAutoRefreshButton');
+        const stopAutoRefreshButton = document.getElementById('stopAutoRefreshButton');
+        const searchBar = document.getElementById('searchBar');
 
         const filmDetailView = document.getElementById('filmDetailView');
         const backToListButton = document.getElementById('backToListButton');
+        const detailRefreshDataButton = document.getElementById('detailRefreshDataButton'); // New button
+        const detailStartAutoRefreshButton = document.getElementById('detailStartAutoRefreshButton'); // New button
+        const detailStopAutoRefreshButton = document.getElementById('detailStopAutoRefreshButton');   // New button
         const detailFilmTitle = document.getElementById('detailFilmTitle');
         const filmDetails = document.getElementById('filmDetails');
+        const otherDetailsContainer = document.getElementById('otherDetails');
+
+        const outletsLicensedSection = document.getElementById('outletsLicensedSection');
+        const outletsLicensedContent = document.getElementById('outletsLicensedContent');
+        const chartsGridContainer = document.getElementById('chartsGridContainer');
+
+        const revenueEarnedNumericalValueContainer = document.getElementById('revenueEarnedNumericalValueContainer');
+        const outletsPitchedSection = document.getElementById('outletsPitchedSection');
+        const outletsPitchedGaugeContainer = document.getElementById('outletsPitchedGaugeContainer');
+        const outletsPitchedListContent = document.getElementById('outletsPitchedListContent');
+        const expensesNumericalValueContainer = document.getElementById('expensesNumericalValueContainer');
+
+        const messageBox = document.getElementById('messageBox');
+
+
+        /**
+         * Displays a temporary message box.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' or 'error' for styling.
+         */
+        function showMessageBox(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.className = `text-center px-4 py-2 rounded-lg shadow-md transition-opacity duration-500 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'} show`;
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+        }
 
         /**
          * Parses CSV text into an array of objects, handling quoted fields.
@@ -150,33 +423,24 @@
             const lines = csvText.trim().split(/\r?\n/);
             if (lines.length === 0) return [];
 
-            // Regex to split CSV line, handling commas inside quotes.
-            // Matches:
-            // (?:^|,): Non-capturing group for start of line or a comma
-            // "(?:[^"]|"")*": A quoted field (non-quote chars or escaped quotes)
-            // |: OR
-            // ([^,]*): An unquoted field (any char except comma)
             const csvRegex = /(?:^|,)(?:"((?:[^"]|"")*)"|([^,]*))/g;
 
-            // Parse headers
             let headerLine = lines[0];
             let match;
             headers = [];
             while ((match = csvRegex.exec(headerLine)) !== null) {
-                // Group 1 is for quoted values, Group 2 for unquoted values
                 let value = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
                 headers.push(value.trim());
             }
-            console.log('Parsed Headers:', headers); // Log headers for debugging
+            console.log('Parsed Headers:', headers);
 
             const data = [];
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
                 const row = {};
                 let values = [];
-                csvRegex.lastIndex = 0; // Reset regex index for each new line
+                csvRegex.lastIndex = 0;
 
-                // Handle empty lines or lines that are just whitespace
                 if (line.trim() === '') {
                     console.warn(`Skipping empty row ${i + 1}.`);
                     continue;
@@ -207,29 +471,23 @@
         async function fetchCSVData(url) {
             loadingMessage.classList.remove('hidden');
             errorMessage.classList.add('hidden');
+            console.log('Attempting to fetch CSV from:', url);
             try {
-                const response = await fetch(url);
+                const response = await fetch(url, { mode: 'cors' });
+                console.log('Fetch response status:', response.status, response.statusText);
                 if (!response.ok) {
-                    // Check for common HTTP errors
-                    if (response.status === 404) {
-                        throw new Error(`404 Not Found: The CSV URL is incorrect or the file does not exist. Please double-check the URL.`);
-                    } else if (response.status === 403) {
-                        throw new Error(`403 Forbidden: Access to the CSV URL is denied. Ensure your Google Sheet is published to the web and accessible without login.`);
-                    } else {
-                        throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}.`);
-                    }
+                    throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}.`);
                 }
                 const csvText = await response.text();
                 const parsedData = parseCSV(csvText);
-                console.log('Parsed Film Data:', parsedData); // Log parsed data for debugging
+                console.log('Parsed Film Data:', parsedData);
                 loadingMessage.classList.add('hidden');
                 return parsedData;
             } catch (error) {
                 console.error('Failed to fetch CSV:', error);
                 loadingMessage.classList.add('hidden');
-                // Provide more specific error messages to the user
-                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                    errorMessage.textContent = 'Network error: Could not connect to the CSV URL. This might be due to a wrong URL, no internet connection, or a **CORS (Cross-Origin Resource Sharing) issue**. Please ensure your Google Sheet is published to the web and accessible, and check your browser\'s console (F12) for more details.';
+                if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                    errorMessage.textContent = 'Network error: Could not connect to the CSV URL. This is often due to a **CORS (Cross-Origin Resource Sharing) issue** or an incorrect URL. Please ensure your Google Sheet is published to the web and accessible, and try the alternative `gviz/tq` URL format mentioned above. Check your browser\'s console (F12) for more details.';
                 } else {
                     errorMessage.textContent = `Error loading data: ${error.message}`;
                 }
@@ -239,19 +497,36 @@
         }
 
         /**
+         * Filters the filmsData based on search input.
+         */
+        function filterFilms() {
+            const searchTerm = searchBar.value.toLowerCase();
+            if (searchTerm) {
+                filteredFilmsData = filmsData.filter(film =>
+                    film[headers[0]] && film[headers[0]].toLowerCase().includes(searchTerm)
+                );
+            } else {
+                filteredFilmsData = [...filmsData];
+            }
+            renderFilmList();
+        }
+
+        /**
          * Renders the list of films.
          */
         function renderFilmList() {
-            filmList.innerHTML = ''; // Clear previous list
-            if (filmsData.length === 0) {
+            filmList.innerHTML = '';
+            const filmsToRender = filteredFilmsData.length > 0 ? filteredFilmsData : filmsData;
+
+            if (filmsToRender.length === 0) {
                 noFilmsMessage.classList.remove('hidden');
                 return;
             } else {
                 noFilmsMessage.classList.add('hidden');
             }
 
-            filmsData.forEach((film, index) => {
-                const filmTitle = film[headers[0]]; // Assuming first column is the title
+            filmsToRender.forEach((film, index) => {
+                const filmTitle = film[headers[0]];
                 if (filmTitle) {
                     const filmCard = document.createElement('div');
                     filmCard.className = 'film-card flex items-center justify-between p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ease-in-out';
@@ -261,11 +536,172 @@
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                         </svg>
                     `;
-                    filmCard.addEventListener('click', () => showFilmDetail(index));
+                    const originalIndex = filmsData.indexOf(film);
+                    filmCard.addEventListener('click', () => showFilmDetail(originalIndex));
                     filmList.appendChild(filmCard);
                 }
             });
         }
+
+        /**
+         * Renders the "Outlets Licensed To" section.
+         * @param {Object} film - The film data object.
+         */
+        function renderOutletsLicensed(film) {
+            outletsLicensedContent.innerHTML = '';
+            // Use column D data from the Google Sheet (index 3) for the list
+            const outletsString = film[headers[3]] || '';
+            const outlets = outletsString.split(',').map(item => item.trim()).filter(item => item !== '');
+
+            // Use column E data from the Google Sheet (index 4) for the count
+            const numberOfOutletsLicensed = film[headers[4]] ? parseFloat(film[headers[4]].replace(/,/g, '').replace(/[^0-9.-]/g, '')) || 0 : 0;
+
+            console.log('Rendering Outlets Licensed Data - Raw (from column D):', outletsString, 'Parsed List:', outlets);
+            console.log('Rendering Outlets Licensed Count (from column E):', film[headers[4]], 'Parsed Count:', numberOfOutletsLicensed);
+
+
+            if (outlets.length === 0 && numberOfOutletsLicensed === 0) {
+                outletsLicensedContent.innerHTML = '<p class="text-gray-400">No outlets licensed yet.</p>';
+                return;
+            }
+
+            const listHtml = `
+                <div class="text-left w-full mb-2">
+                    <span class="outlets-licensed-display">The ${film[headers[0]]} (</span>
+                    <span class="outlets-licensed-display">${outlets.join(', ')}</span>
+                    <span class="outlets-licensed-display">)</span>
+                </div>
+                <div class="text-left w-full">
+                    <span class="outlets-licensed-display">Number of Outlets Licensed:</span>
+                    <span class="outlets-licensed-total ml-2">${numberOfOutletsLicensed.toLocaleString('en-US')}</span>
+                </div>
+            `;
+            outletsLicensedContent.innerHTML = listHtml;
+        }
+
+        /**
+         * Renders the list of "Outlets Pitched To".
+         * @param {Object} film - The film data object.
+         */
+        function renderOutletsPitchedList(film) {
+            outletsPitchedListContent.innerHTML = '';
+            // Use column B data from the Google Sheet (index 1) for the list
+            const outletsString = film[headers[1]] || '';
+            const outlets = outletsString.split(',').map(item => item.trim()).filter(item => item !== '');
+
+            // Use column C data from the Google Sheet (index 2) for the count
+            const numberOfOutletsPitched = film[headers[2]] ? parseFloat(film[headers[2]].replace(/,/g, '').replace(/[^0-9.-]/g, '')) || 0 : 0;
+
+            console.log('Rendering Outlets Pitched Data - Raw (from column B):', outletsString, 'Parsed List:', outlets);
+            console.log('Rendering Outlets Pitched Count (from column C):', film[headers[2]], 'Parsed Count:', numberOfOutletsPitched);
+
+
+            if (outlets.length === 0 && numberOfOutletsPitched === 0) {
+                outletsPitchedListContent.innerHTML = '<p class="text-gray-400 text-sm">No outlets pitched yet.</p>';
+                return;
+            }
+
+            const listHtml = `
+                <div class="text-left w-full text-sm text-gray-300 mb-2">
+                    (${outlets.join(', ')})
+                </div>
+                <div class="text-left w-full text-sm text-gray-300">
+                    Number of Outlets Pitched: <span class="text-base font-semibold text-blue-300">${numberOfOutletsPitched.toLocaleString('en-US')}</span>
+                </div>
+            `;
+            outletsPitchedListContent.innerHTML = listHtml;
+        }
+
+
+        /**
+         * Renders a numerical value directly.
+         * @param {HTMLElement} containerElement - The DOM element to append the value to.
+         * @param {string} valueString - The raw string value from the CSV.
+         * @param {string} unit - The unit to display (e.g., "$").
+         */
+        function renderNumericalValue(containerElement, valueString, unit = '') {
+            containerElement.innerHTML = ''; // Clear previous content
+
+            const cleanedValue = valueString ? valueString.replace(/,/g, '').replace(/[^0-9.-]/g, '') : '0';
+            const value = parseFloat(cleanedValue) || 0;
+
+            console.log(`Numerical Value for ${containerElement.id}: Raw valueString="${valueString}", Cleaned value="${cleanedValue}", Parsed value=${value}`);
+
+            const formattedValue = unit === '$' ? `$${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : value.toLocaleString('en-US');
+
+            const valueDiv = document.createElement('div');
+            valueDiv.className = 'numerical-value-display';
+            valueDiv.textContent = formattedValue;
+            containerElement.appendChild(valueDiv);
+        }
+
+
+        /**
+         * Renders a circular gauge using D3.js. (Still used for Outlets Pitched To)
+         * @param {HTMLElement} containerElement - The DOM element to append the gauge to.
+         * @param {string} valueString - The raw string value from the CSV.
+         * @param {string} unit - The unit to display (e.g., "$").
+         * @param {number} maxValue - The maximum value for the gauge (for percentage fill).
+         * @param {boolean} showPercentage - Whether to show percentage below value.
+         */
+        function renderCircularGauge(containerElement, valueString, unit = '', maxValue = 100000, showPercentage = false) {
+            containerElement.innerHTML = ''; // Clear previous content
+
+            const width = 150;
+            const height = 150;
+            const radius = Math.min(width, height) / 2 - 10; // Subtract stroke width
+            const arcWidth = 10;
+
+            const svg = d3.select(containerElement)
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("class", "circular-gauge-svg")
+                .append("g")
+                .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+            const arc = d3.arc()
+                .innerRadius(radius - arcWidth)
+                .outerRadius(radius);
+
+            // Background arc
+            svg.append("path")
+                .datum({ startAngle: 0, endAngle: 2 * Math.PI })
+                .attr("class", "gauge-background-arc")
+                .attr("d", arc);
+
+            const cleanedValue = valueString ? valueString.replace(/,/g, '').replace(/[^0-9.-]/g, '') : '0';
+            const value = parseFloat(cleanedValue) || 0;
+
+            console.log(`Circular Gauge for ${containerElement.id}: Raw valueString="${valueString}", Cleaned value="${cleanedValue}", Parsed value=${value}`);
+
+            // Calculate percentage for fill
+            const percentage = maxValue > 0 ? Math.min(1, value / maxValue) : 0; // Cap at 100%
+            const endAngle = 2 * Math.PI * percentage;
+
+            // Fill arc
+            svg.append("path")
+                .datum({ startAngle: 0, endAngle: endAngle })
+                .attr("class", "gauge-fill-arc")
+                .attr("d", arc);
+
+            // Center value text
+            const formattedValue = unit === '$' ? `$${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : value.toLocaleString('en-US');
+
+            d3.select(containerElement)
+                .append("div")
+                .attr("class", "gauge-center-value")
+                .text(formattedValue);
+
+            // Optional percentage/sub-label
+            if (showPercentage && maxValue > 0) {
+                d3.select(containerElement)
+                    .append("div")
+                    .attr("class", "gauge-sub-label")
+                    .text(`${(percentage * 100).toFixed(0)}%`);
+            }
+        }
+
 
         /**
          * Displays the detailed view for a selected film.
@@ -275,20 +711,54 @@
             const film = filmsData[index];
             if (!film) return;
 
-            detailFilmTitle.textContent = film[headers[0]] || 'Film Details'; // Set the main title
-            filmDetails.innerHTML = ''; // Clear previous details
+            console.log('Current Film Data (from showFilmDetail):', film); // Crucial for debugging column names
 
-            // Iterate over all headers (columns) and display their value for the film
-            headers.forEach(header => {
-                // Skip the first header (title) as it's already displayed prominently
-                if (header === headers[0]) return;
+            // Set the film title color to black
+            detailFilmTitle.style.color = '#000000';
+            detailFilmTitle.textContent = film[headers[0]] || 'Film Details';
+
+            // Ensure these sections are visible
+            outletsLicensedSection.classList.remove('hidden');
+            chartsGridContainer.classList.remove('hidden');
+            otherDetailsContainer.classList.remove('hidden');
+
+            // Render "Outlets Licensed To" - using column D (index 3) for list and E (index 4) for count
+            renderOutletsLicensed(film);
+
+            // Revenue Earned (Gross) - now a numerical value
+            renderNumericalValue(revenueEarnedNumericalValueContainer, film['Revenue Earned'], '$');
+
+            // Outlets Pitched To - remains a circular gauge, using column C (index 2) for gauge value
+            renderCircularGauge(outletsPitchedGaugeContainer, film[headers[2]], '', 100); // Max pitched 100 (using column C data)
+            renderOutletsPitchedList(film); // This renders the list below the gauge, using column B (index 1)
+
+
+            // Program Expenses (USD) - now a numerical value, using column J (index 9)
+            renderNumericalValue(expensesNumericalValueContainer, film[headers[9]], '$');
+
+
+            // Render other general details
+            otherDetailsContainer.innerHTML = '<h3 class="text-xl font-semibold text-gray-100 mb-4">Additional Details</h3>';
+            headers.forEach((header, index) => {
+                // Skip chart-related headers and the main title, as they are handled by charts or main title
+                // Skip Column A (index 0), B (index 1), C (index 2), D (index 3), E (index 4), J (index 9), Revenue Earned, Outlets Pitched To
+                if (index === 0 || // Title (Column A)
+                    index === 1 || // Column B (Outlets Pitched To list)
+                    index === 2 || // Column C (Outlets Pitched To count)
+                    index === 3 || // Column D (Outlets Licensed To list)
+                    index === 4 || // Column E (Outlets Licensed To count)
+                    index === 9 || // Column J (Program Expenses)
+                    header === 'Revenue Earned' || // Assuming this is a named column
+                    header === 'Outlets Pitched To') { // Assuming this is a named column
+                    return;
+                }
 
                 const value = film[header];
                 if (value) {
                     const detailItem = document.createElement('div');
                     detailItem.className = 'detail-item';
-                    detailItem.innerHTML = `<strong class="text-blue-700">${header}:</strong> <span class="text-gray-700">${value}</span>`;
-                    filmDetails.appendChild(detailItem);
+                    detailItem.innerHTML = `<strong class="text-blue-700">${header}:</strong> <span class="text-gray-300">${value}</span>`;
+                    otherDetailsContainer.appendChild(detailItem);
                 }
             });
 
@@ -302,7 +772,59 @@
         function showFilmList() {
             filmDetailView.classList.add('hidden');
             filmListView.classList.remove('hidden');
+            searchBar.value = ''; // Clear search bar
+            filterFilms(); // Reset filter
+
+            // Hide the detail sections and clear their content
+            outletsLicensedSection.classList.add('hidden');
+            chartsGridContainer.classList.add('hidden');
+            otherDetailsContainer.classList.add('hidden');
+
+            outletsLicensedContent.innerHTML = '';
+            revenueEarnedNumericalValueContainer.innerHTML = ''; // Clear numerical value
+            outletsPitchedGaugeContainer.innerHTML = '';
+            outletsPitchedListContent.innerHTML = '';
+            expensesNumericalValueContainer.innerHTML = ''; // Clear numerical value
+            otherDetailsContainer.innerHTML = '';
+
+            // Stop auto-refresh when going back to list
+            stopAutoRefresh();
         }
+
+        /**
+         * Starts the automatic data refresh.
+         */
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval); // Clear any existing interval
+            }
+            autoRefreshInterval = setInterval(() => {
+                console.log('Auto-refresh triggered.');
+                handleRefreshData();
+            }, 5000); // Refresh every 5 seconds
+
+            startAutoRefreshButton.classList.add('hidden');
+            stopAutoRefreshButton.classList.remove('hidden');
+            detailStartAutoRefreshButton.classList.add('hidden'); // Hide detail start button
+            detailStopAutoRefreshButton.classList.remove('hidden'); // Show detail stop button
+            showMessageBox('Auto-refresh started (every 5 seconds).', 'success');
+        }
+
+        /**
+         * Stops the automatic data refresh.
+         */
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                startAutoRefreshButton.classList.remove('hidden');
+                stopAutoRefreshButton.classList.add('hidden');
+                detailStartAutoRefreshButton.classList.remove('hidden'); // Show detail start button
+                detailStopAutoRefreshButton.classList.add('hidden');   // Hide detail stop button
+                showMessageBox('Auto-refresh stopped.', 'info');
+            }
+        }
+
 
         /**
          * Handles the initial data load from the URL input.
@@ -312,12 +834,13 @@
             if (url) {
                 filmsData = await fetchCSVData(url);
                 if (filmsData.length > 0) {
-                    dataSourceSection.classList.add('hidden'); // Hide input section
-                    filmListView.classList.remove('hidden'); // Show film list
-                    renderFilmList();
-                    localStorage.setItem('googleSheetCsvUrl', url); // Save URL only on successful load
+                    dataSourceSection.classList.add('hidden');
+                    filmListView.classList.remove('hidden');
+                    filterFilms();
+                    localStorage.setItem('googleSheetCsvUrl', url);
+                    // Start auto-refresh automatically after initial load
+                    startAutoRefresh();
                 } else {
-                    // If data is empty after fetch, show a specific message unless an error already occurred
                     if (errorMessage.classList.contains('hidden')) {
                          errorMessage.textContent = 'No film data found in the CSV. Please check your sheet content or if it\'s empty.';
                          errorMessage.classList.remove('hidden');
@@ -333,33 +856,57 @@
          * Handles refreshing the data from the current URL.
          */
         async function handleRefreshData() {
-            const url = csvUrlInput.value.trim(); // Use the URL from the input, even if hidden
+            console.log('Refresh Data initiated.');
+            const url = csvUrlInput.value.trim();
             if (url) {
+                const oldFilmsData = JSON.stringify(filmsData); // Store current data as string for comparison
                 filmsData = await fetchCSVData(url);
+
                 if (filmsData.length > 0) {
-                    renderFilmList();
-                    // If currently on detail view, go back to list to reflect potential changes
+                    filterFilms();
                     if (!filmDetailView.classList.contains('hidden')) {
-                        showFilmList();
+                        const currentFilmTitle = detailFilmTitle.textContent;
+                        const currentFilm = filmsData.find(f => f[headers[0]] === currentFilmTitle);
+                        if (currentFilm) {
+                            showFilmDetail(filmsData.indexOf(currentFilm));
+                        } else {
+                            showFilmList();
+                        }
                     }
+                    // Only show success message if data actually changed
+                    if (oldFilmsData !== JSON.stringify(filmsData)) {
+                        showMessageBox('Data refreshed successfully!', 'success');
+                    }
+                    console.log('Data refresh completed.');
                 } else {
-                    // If data is empty after refresh, show a specific message unless an error already occurred
                     if (errorMessage.classList.contains('hidden')) {
                         errorMessage.textContent = 'No film data found after refresh. The sheet might be empty or inaccessible.';
-                        errorMessage.classList.remove('hidden');
+                        console.warn('Data refresh resulted in no films or an empty sheet.');
                     }
+                    errorMessage.classList.remove('hidden');
+                    showMessageBox('Data refresh failed or returned no data.', 'error');
                 }
             } else {
-                console.error("No URL found to refresh data. Please load data first.");
+                console.error("Cannot refresh: No URL found to refresh data. Please load data first.");
                 errorMessage.textContent = "Cannot refresh: No CSV URL has been loaded yet. Please enter and load a URL first.";
                 errorMessage.classList.remove('hidden');
+                showMessageBox('Cannot refresh: No URL provided.', 'error');
             }
         }
 
         // Event Listeners
         loadDataButton.addEventListener('click', handleLoadData);
         refreshDataButton.addEventListener('click', handleRefreshData);
+        startAutoRefreshButton.addEventListener('click', startAutoRefresh);
+        stopAutoRefreshButton.addEventListener('click', stopAutoRefresh);
         backToListButton.addEventListener('click', showFilmList);
+        searchBar.addEventListener('input', filterFilms);
+
+        // New event listeners for detail view buttons
+        document.getElementById('detailRefreshDataButton').addEventListener('click', handleRefreshData);
+        document.getElementById('detailStartAutoRefreshButton').addEventListener('click', startAutoRefresh);
+        document.getElementById('detailStopAutoRefreshButton').addEventListener('click', stopAutoRefresh);
+
 
         // Optional: Load data automatically if a URL is present in localStorage (for persistence)
         window.onload = function() {
