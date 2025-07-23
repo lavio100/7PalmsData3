@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Film Data Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .film-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .film-card:hover {
+            background-color: #eff6ff;
+            border-color: #93c5fd;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .detail-item {
+            margin-bottom: 0.75rem;
+        }
+        .detail-item strong {
+            color: #4a5568;
+        }
+        /* Custom scrollbar for film list */
+        .film-list-container {
+            max-height: 60vh; /* Limit height to enable scrolling */
+            overflow-y: auto;
+            padding-right: 10px; /* Space for scrollbar */
+        }
+        .film-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .film-list-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .film-list-container::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+        .film-list-container::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6 header">Film Data Portal</h1>
+
+        <!-- Data Source Input -->
+        <div id="data-source-section" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+            <p class="text-blue-800 text-sm mb-3">
+                <strong>Important:</strong> To use this portal, you need to publish your Google Sheet as a CSV file.
+                Go to your Google Sheet, click "File" > "Share" > "Publish to web". Select "Comma-separated values (.csv)"
+                from the dropdown for the entire document or a specific sheet, then click "Publish". Copy the generated URL and paste it below.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+                <input type="url" id="csvUrlInput" placeholder="Enter your Google Sheet CSV URL here"
+                       class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 w-full sm:w-auto">
+                <button id="loadDataButton"
+                        class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md w-full sm:w-auto">
+                    Load Data
+                </button>
+            </div>
+            <p id="loadingMessage" class="mt-3 text-center text-blue-600 font-medium hidden">Loading data...</p>
+            <p id="errorMessage" class="mt-3 text-center text-red-600 font-medium hidden">Error loading data. Please check the URL and try again.</p>
+        </div>
+
+        <!-- Main Film List View -->
+        <div id="filmListView" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-gray-800">Available Films</h2>
+                <button id="refreshDataButton"
+                        class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                    Refresh Data
+                </button>
+            </div>
+            <div id="filmList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 film-list-container">
+                <!-- Film cards will be rendered here -->
+            </div>
+            <p id="noFilmsMessage" class="text-center text-gray-500 mt-8 hidden">No films found. Please load your data.</p>
+        </div>
+
+        <!-- Film Detail View -->
+        <div id="filmDetailView" class="hidden">
+            <button id="backToListButton"
+                    class="mb-6 px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
+                &larr; Back to List
+            </button>
+            <h2 id="detailFilmTitle" class="text-3xl font-bold text-gray-800 mb-4"></h2>
+            <div id="filmDetails" class="bg-blue-50 p-6 rounded-lg shadow-inner">
+                <!-- Film details will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for data and UI elements
+        let filmsData = [];
+        let headers = [];
+        const csvUrlInput = document.getElementById('csvUrlInput');
+        const loadDataButton = document.getElementById('loadDataButton');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const dataSourceSection = document.getElementById('data-source-section');
+
+        const filmListView = document.getElementById('filmListView');
+        const filmList = document.getElementById('filmList');
+        const refreshDataButton = document.getElementById('refreshDataButton');
+        const noFilmsMessage = document.getElementById('noFilmsMessage');
+
+        const filmDetailView = document.getElementById('filmDetailView');
+        const backToListButton = document.getElementById('backToListButton');
+        const detailFilmTitle = document.getElementById('detailFilmTitle');
+        const filmDetails = document.getElementById('filmDetails');
+
+        /**
+         * Parses CSV text into an array of objects, handling quoted fields.
+         * Assumes the first row is headers.
+         * @param {string} csvText - The CSV data as a string.
+         * @returns {Array<Object>} An array of objects, where each object represents a row.
+         */
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split(/\r?\n/);
+            if (lines.length === 0) return [];
+
+            // Regex to split CSV line, handling commas inside quotes.
+            // Matches:
+            // (?:^|,): Non-capturing group for start of line or a comma
+            // "(?:[^"]|"")*": A quoted field (non-quote chars or escaped quotes)
+            // |: OR
+            // ([^,]*): An unquoted field (any char except comma)
+            const csvRegex = /(?:^|,)(?:"((?:[^"]|"")*)"|([^,]*))/g;
+
+            // Parse headers
+            let headerLine = lines[0];
+            let match;
+            headers = [];
+            while ((match = csvRegex.exec(headerLine)) !== null) {
+                // Group 1 is for quoted values, Group 2 for unquoted values
+                let value = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
+                headers.push(value.trim());
+            }
+
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                const row = {};
+                let values = [];
+                let currentMatch;
+                csvRegex.lastIndex = 0; // Reset regex index for each new line
+
+                while ((currentMatch = csvRegex.exec(line)) !== null) {
+                    let value = currentMatch[1] !== undefined ? currentMatch[1].replace(/""/g, '"') : currentMatch[2];
+                    values.push(value.trim());
+                }
+
+                if (values.length === headers.length) {
+                    headers.forEach((header, index) => {
+                        row[header] = values[index];
+                    });
+                    data.push(row);
+                } else {
+                    console.warn(`Skipping malformed row ${i + 1}: Expected ${headers.length} columns, got ${values.length}. Line: "${line}"`);
+                }
+            }
+            return data;
+        }
+
+        /**
+         * Fetches CSV data from the given URL.
+         * @param {string} url - The URL to the CSV file.
+         * @returns {Promise<Array<Object>>} A promise that resolves with the parsed film data.
+         */
+        async function fetchCSVData(url) {
+            loadingMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const csvText = await response.text();
+                const parsedData = parseCSV(csvText);
+                loadingMessage.classList.add('hidden');
+                return parsedData;
+            } catch (error) {
+                console.error('Failed to fetch CSV:', error);
+                loadingMessage.classList.add('hidden');
+                errorMessage.classList.remove('hidden');
+                return [];
+            }
+        }
+
+        /**
+         * Renders the list of films.
+         */
+        function renderFilmList() {
+            filmList.innerHTML = ''; // Clear previous list
+            if (filmsData.length === 0) {
+                noFilmsMessage.classList.remove('hidden');
+                return;
+            } else {
+                noFilmsMessage.classList.add('hidden');
+            }
+
+            filmsData.forEach((film, index) => {
+                const filmTitle = film[headers[0]]; // Assuming first column is the title
+                if (filmTitle) {
+                    const filmCard = document.createElement('div');
+                    filmCard.className = 'film-card flex items-center justify-between p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ease-in-out';
+                    filmCard.innerHTML = `
+                        <h3 class="text-lg font-medium text-gray-900 truncate">${filmTitle}</h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    `;
+                    filmCard.addEventListener('click', () => showFilmDetail(index));
+                    filmList.appendChild(filmCard);
+                }
+            });
+        }
+
+        /**
+         * Displays the detailed view for a selected film.
+         * @param {number} index - The index of the film in the filmsData array.
+         */
+        function showFilmDetail(index) {
+            const film = filmsData[index];
+            if (!film) return;
+
+            detailFilmTitle.textContent = film[headers[0]] || 'Film Details'; // Set the main title
+            filmDetails.innerHTML = ''; // Clear previous details
+
+            // Iterate over all headers (columns) and display their value for the film
+            headers.forEach(header => {
+                // Skip the first header (title) as it's already displayed prominently
+                if (header === headers[0]) return;
+
+                const value = film[header];
+                if (value) {
+                    const detailItem = document.createElement('div');
+                    detailItem.className = 'detail-item';
+                    detailItem.innerHTML = `<strong class="text-blue-700">${header}:</strong> <span class="text-gray-700">${value}</span>`;
+                    filmDetails.appendChild(detailItem);
+                }
+            });
+
+            filmListView.classList.add('hidden');
+            filmDetailView.classList.remove('hidden');
+        }
+
+        /**
+         * Switches back to the film list view.
+         */
+        function showFilmList() {
+            filmDetailView.classList.add('hidden');
+            filmListView.classList.remove('hidden');
+        }
+
+        /**
+         * Handles the initial data load from the URL input.
+         */
+        async function handleLoadData() {
+            const url = csvUrlInput.value.trim();
+            if (url) {
+                filmsData = await fetchCSVData(url);
+                if (filmsData.length > 0) {
+                    dataSourceSection.classList.add('hidden'); // Hide input section
+                    filmListView.classList.remove('hidden'); // Show film list
+                    renderFilmList();
+                }
+            } else {
+                errorMessage.textContent = 'Please enter a valid CSV URL.';
+                errorMessage.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * Handles refreshing the data from the current URL.
+         */
+        async function handleRefreshData() {
+            const url = csvUrlInput.value.trim(); // Use the URL from the input, even if hidden
+            if (url) {
+                filmsData = await fetchCSVData(url);
+                if (filmsData.length > 0) {
+                    renderFilmList();
+                    // If currently on detail view, go back to list to reflect potential changes
+                    if (!filmDetailView.classList.contains('hidden')) {
+                        showFilmList();
+                    }
+                }
+            } else {
+                // This case should ideally not happen if data source section is hidden
+                console.error("No URL found to refresh data.");
+            }
+        }
+
+        // Event Listeners
+        loadDataButton.addEventListener('click', handleLoadData);
+        refreshDataButton.addEventListener('click', handleRefreshData);
+        backToListButton.addEventListener('click', showFilmList);
+
+        // Optional: Load data automatically if a URL is present in localStorage (for persistence)
+        window.onload = function() {
+            const storedUrl = localStorage.getItem('googleSheetCsvUrl');
+            if (storedUrl) {
+                csvUrlInput.value = storedUrl;
+                handleLoadData();
+            }
+        };
