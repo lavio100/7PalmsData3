@@ -167,17 +167,23 @@
                 let value = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
                 headers.push(value.trim());
             }
+            console.log('Parsed Headers:', headers); // Log headers for debugging
 
             const data = [];
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
                 const row = {};
                 let values = [];
-                let currentMatch;
                 csvRegex.lastIndex = 0; // Reset regex index for each new line
 
-                while ((currentMatch = csvRegex.exec(line)) !== null) {
-                    let value = currentMatch[1] !== undefined ? currentMatch[1].replace(/""/g, '"') : currentMatch[2];
+                // Handle empty lines or lines that are just whitespace
+                if (line.trim() === '') {
+                    console.warn(`Skipping empty row ${i + 1}.`);
+                    continue;
+                }
+
+                while ((match = csvRegex.exec(line)) !== null) {
+                    let value = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
                     values.push(value.trim());
                 }
 
@@ -204,15 +210,29 @@
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // Check for common HTTP errors
+                    if (response.status === 404) {
+                        throw new Error(`404 Not Found: The CSV URL is incorrect or the file does not exist. Please double-check the URL.`);
+                    } else if (response.status === 403) {
+                        throw new Error(`403 Forbidden: Access to the CSV URL is denied. Ensure your Google Sheet is published to the web and accessible without login.`);
+                    } else {
+                        throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}.`);
+                    }
                 }
                 const csvText = await response.text();
                 const parsedData = parseCSV(csvText);
+                console.log('Parsed Film Data:', parsedData); // Log parsed data for debugging
                 loadingMessage.classList.add('hidden');
                 return parsedData;
             } catch (error) {
                 console.error('Failed to fetch CSV:', error);
                 loadingMessage.classList.add('hidden');
+                // Provide more specific error messages to the user
+                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                    errorMessage.textContent = 'Network error: Could not connect to the CSV URL. This might be due to a wrong URL, no internet connection, or a **CORS (Cross-Origin Resource Sharing) issue**. Please ensure your Google Sheet is published to the web and accessible, and check your browser\'s console (F12) for more details.';
+                } else {
+                    errorMessage.textContent = `Error loading data: ${error.message}`;
+                }
                 errorMessage.classList.remove('hidden');
                 return [];
             }
@@ -295,9 +315,16 @@
                     dataSourceSection.classList.add('hidden'); // Hide input section
                     filmListView.classList.remove('hidden'); // Show film list
                     renderFilmList();
+                    localStorage.setItem('googleSheetCsvUrl', url); // Save URL only on successful load
+                } else {
+                    // If data is empty after fetch, show a specific message unless an error already occurred
+                    if (errorMessage.classList.contains('hidden')) {
+                         errorMessage.textContent = 'No film data found in the CSV. Please check your sheet content or if it\'s empty.';
+                         errorMessage.classList.remove('hidden');
+                    }
                 }
             } else {
-                errorMessage.textContent = 'Please enter a valid CSV URL.';
+                errorMessage.textContent = 'Please enter a valid Google Sheet CSV URL.';
                 errorMessage.classList.remove('hidden');
             }
         }
@@ -315,10 +342,17 @@
                     if (!filmDetailView.classList.contains('hidden')) {
                         showFilmList();
                     }
+                } else {
+                    // If data is empty after refresh, show a specific message unless an error already occurred
+                    if (errorMessage.classList.contains('hidden')) {
+                        errorMessage.textContent = 'No film data found after refresh. The sheet might be empty or inaccessible.';
+                        errorMessage.classList.remove('hidden');
+                    }
                 }
             } else {
-                // This case should ideally not happen if data source section is hidden
-                console.error("No URL found to refresh data.");
+                console.error("No URL found to refresh data. Please load data first.");
+                errorMessage.textContent = "Cannot refresh: No CSV URL has been loaded yet. Please enter and load a URL first.";
+                errorMessage.classList.remove('hidden');
             }
         }
 
@@ -335,3 +369,6 @@
                 handleLoadData();
             }
         };
+    </script>
+</body>
+</html>
