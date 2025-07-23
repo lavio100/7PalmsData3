@@ -225,13 +225,15 @@
             border-radius: 6px;
             font-size: 0.75rem;
             cursor: pointer;
-            opacity: 0;
+            /* Changed opacity to 1 so it's always visible */
+            opacity: 1;
             transition: opacity 0.2s ease-in-out;
             z-index: 10;
         }
-        .film-card:hover .copy-link-btn {
+        /* Removed hover effect for copy button as it's always visible now */
+        /* .film-card:hover .copy-link-btn {
             opacity: 1;
-        }
+        } */
     </style>
 </head>
 <body class="p-4">
@@ -532,7 +534,7 @@
                 noFilmsMessage.classList.add('hidden');
             }
 
-            filmsToRender.forEach((film) => { // Removed 'index' as it's not used directly for showFilmDetail anymore
+            filmsToRender.forEach((film) => {
                 const filmTitle = film[headers[0]];
                 if (filmTitle) {
                     const filmCard = document.createElement('div');
