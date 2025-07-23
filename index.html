@@ -298,7 +298,7 @@
         <div id="filmDetailView" class="hidden">
             <div class="flex justify-between items-center mb-4">
                 <button id="backToListButton"
-                        class="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md hidden">
+                        class="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md">
                     &larr; Back to List
                 </button>
                 <div class="flex gap-2">
@@ -835,15 +835,7 @@
             if (urlParams.has('filmTitle')) {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
-            // The backToListButton is only shown if not a direct embed.
-            // When showFilmList is called, it means we are either returning from a film detail
-            // or initially loading the list. In both cases, the button should be visible
-            // UNLESS the initial load was an embed link.
-            // The logic in showFilmDetail already handles hiding it for embeds.
-            // So, if we are in showFilmList, and there's no filmTitle param, it should be visible.
-            if (!urlParams.has('filmTitle')) {
-                backToListButton.classList.remove('hidden');
-            }
+            backToListButton.classList.remove('hidden'); // Ensure back button is visible when returning to list
         }
 
         /**
@@ -898,7 +890,7 @@
                         dataSourceSection.classList.add('hidden'); // Hide input section
                         filmListView.classList.add('hidden'); // Hide list view
                         filmDetailView.classList.remove('hidden'); // Show detail view
-                        backToListButton.classList.add('hidden'); // Ensure back button is hidden for direct embeds
+                        backToListButton.classList.add('hidden'); // Hide back button for direct embeds
 
                         const decodedFilmTitle = decodeURIComponent(filmTitleParam);
                         const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
@@ -915,7 +907,6 @@
                         filmListView.classList.remove('hidden');
                         filterFilms();
                         startAutoRefresh();
-                        backToListButton.classList.remove('hidden'); // Show back button for normal list view
                     }
                 } else {
                     if (errorMessage.classList.contains('hidden')) {
@@ -992,4 +983,7 @@
                 csvUrlInput.value = storedUrl;
                 handleLoadData();
             }
-       
+        };
+    </script>
+</body>
+</html>
