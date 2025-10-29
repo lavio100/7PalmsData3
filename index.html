@@ -956,7 +956,7 @@
                 
                 if (filmTitleParam) {
                     // Embed Mode: Try to show detail directly
-                    filmListView.classList.add('hidden'); 
+                    filmListView.classList.add('hidden'); // FIX: Ensure list view is hidden
                     filmDetailView.classList.remove('hidden'); 
                     
                     const decodedFilmTitle = decodeURIComponent(filmTitleParam);
