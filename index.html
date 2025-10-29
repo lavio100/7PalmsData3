@@ -23,7 +23,32 @@
             background-color: #ffffff;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            /* Initially hide the container content */
+            visibility: hidden;
         }
+        /* Full Page Loader Styles */
+        #fullPageLoader {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+            z-index: 1000;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #2563eb;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+
         .header {
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 1rem;
@@ -39,7 +64,7 @@
             padding: 1rem;
             cursor: pointer;
             transition: all 0.2s ease-in-out;
-            position: relative; /* Needed for copy button positioning */
+            position: relative;
         }
         .film-card:hover {
             background-color: #eff6ff;
@@ -232,29 +257,22 @@
     </style>
 </head>
 <body class="p-4">
+    <!-- Full Page Loader -->
+    <div id="fullPageLoader">
+        <div class="text-center">
+            <div class="spinner mb-3 mx-auto"></div>
+            <p class="text-gray-700 font-semibold">Loading film data...</p>
+        </div>
+    </div>
+    
     <div class="container">
         <header class="header">
             <h1 class="text-3xl font-bold">7 Palms Filmmaker Portal</h1>
         </header>
 
-        <!-- Data Source Input -->
-        <!-- This section is now hidden as the URL is hardcoded -->
-        <div id="data-source-section" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm hidden">
-            <p class="text-blue-800 text-sm mb-3">
-                <strong>Important:</strong> To use this portal, you need to publish your Google Sheet as a CSV file.
-                Go to your Google Sheet, click "File" > "Share" > "Publish to web". Select "Comma-separated values (.csv)"
-                from the dropdown for the entire document or a specific sheet, then click "Publish". Copy the generated URL and paste it below.
-            </p>
-            <div class="flex flex-col sm:flex-row items-center gap-3">
-                <input type="url" id="csvUrlInput" placeholder="Enter your Google Sheet CSV URL here"
-                       class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 w-full sm:w-auto">
-                <button id="loadDataButton"
-                        class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md w-full sm:w-auto">
-                    Load Data
-                </button>
-            </div>
-            <p id="loadingMessage" class="mt-3 text-center text-blue-600 font-medium hidden">Loading data...</p>
-            <p id="errorMessage" class="mt-3 text-center text-red-600 font-medium hidden">Error loading data. Please check the URL and try again.</p>
+        <!-- Main Status/Error Area (Visible only if data load fails or in list view) -->
+        <div id="statusMessages" class="text-center p-4">
+            <p id="errorMessage" class="mt-3 text-center text-red-600 font-medium hidden"></p>
         </div>
 
         <!-- Main Film List View -->
@@ -365,10 +383,10 @@
         // Hardcoded Google Sheet URL
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1CnLZNyYyPTdnhwSVRgCtXQDeZCMC-HbqyqtPqusvYro/gviz/tq?tqx=out:csv&sheet=Databox%20Portal%20Information%201';
 
-        // Removed csvUrlInput and loadDataButton as they are no longer needed in HTML
-        const loadingMessage = document.getElementById('loadingMessage');
+        // Elements
+        const fullPageLoader = document.getElementById('fullPageLoader'); // New full page loader
         const errorMessage = document.getElementById('errorMessage');
-        const dataSourceSection = document.getElementById('data-source-section'); // Still needed to hide
+        const statusMessages = document.getElementById('statusMessages');
 
         const filmListView = document.getElementById('filmListView');
         const filmList = document.getElementById('filmList');
@@ -468,11 +486,18 @@
          * @returns {Promise<Array<Object>>} A promise that resolves with the parsed film data.
          */
         async function fetchCSVData(url) {
-            loadingMessage.classList.remove('hidden');
-            errorMessage.classList.add('hidden');
+            const isEmbed = new URLSearchParams(window.location.search).has('filmTitle');
+            
+            if (!isEmbed && statusMessages) {
+                errorMessage.classList.add('hidden');
+                statusMessages.classList.remove('hidden');
+            } else {
+                console.log('Embed mode active. Suppressing UI messages.');
+            }
+
             console.log('Attempting to fetch CSV from:', url);
             try {
-                // Added cache: 'no-store' to ensure fresh data and referrerPolicy
+                // Use no-store cache to ensure fresh data and cors mode
                 const response = await fetch(url, { mode: 'cors', cache: 'no-store', referrerPolicy: 'no-referrer' });
                 console.log('Fetch response status:', response.status, response.statusText);
                 if (!response.ok) {
@@ -480,14 +505,31 @@
                 }
                 const csvText = await response.text();
                 const parsedData = parseCSV(csvText);
-                console.log('Parsed Film Data:', parsedData);
-                loadingMessage.classList.add('hidden');
+                
+                if (!isEmbed && statusMessages) statusMessages.classList.add('hidden');
                 return parsedData;
+
             } catch (error) {
                 console.error('Failed to fetch CSV:', error);
-                loadingMessage.classList.add('hidden');
-                errorMessage.textContent = `Error loading data: ${error.message}. Please ensure the Google Sheet is published to web as CSV and the URL is correct. If you're encountering a 'Failed to fetch' error, try using the Google Sheets gviz/tq export URL format.`;
-                errorMessage.classList.remove('hidden');
+                
+                if (!isEmbed && errorMessage) {
+                    errorMessage.textContent = `Error loading data: ${error.message}. Please ensure the Google Sheet is published to web as CSV and the URL is correct.`;
+                    errorMessage.classList.remove('hidden');
+                } else if (isEmbed && filmDetailView) {
+                     // In embed mode, if it fails, show a critical error inside the viewing area
+                     filmDetailView.innerHTML = `
+                        <div class="text-center p-6 bg-red-800 text-white rounded-lg">
+                            <h2 class="text-xl font-bold mb-2">Data Loading Failed</h2>
+                            <p>Cannot load film data. Please ensure the Google Sheet is published publicly.</p>
+                            <p class="text-xs mt-2">(Error: Check console for network details)</p>
+                        </div>
+                    `;
+                    filmDetailView.classList.remove('hidden');
+                    // Hide the main container content while showing the error detail
+                    const containerContent = document.querySelector('.container');
+                    if (containerContent) containerContent.style.visibility = 'visible';
+                }
+
                 return [];
             }
         }
@@ -885,54 +927,76 @@
          */
         async function handleLoadData() {
             const url = GOOGLE_SHEET_CSV_URL; // Use the hardcoded URL
-            if (!url) { // Added check for URL existence
-                errorMessage.textContent = 'Error: Google Sheet URL is not defined.';
-                errorMessage.classList.remove('hidden');
+            if (!url) { // Should not happen now that URL is hardcoded
+                if (errorMessage) errorMessage.textContent = 'Error: Google Sheet URL is not defined.';
+                if (errorMessage) errorMessage.classList.remove('hidden');
                 return;
             }
 
+            // --- Initial Loading Screen Setup ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const filmTitleParam = urlParams.get('filmTitle');
+            
+            // Show full page loader while fetching data
+            if (fullPageLoader) fullPageLoader.style.display = 'flex';
+
+
             filmsData = await fetchCSVData(url); // Always fetch data first
 
+            // Hide full page loader once fetch is complete (success or fail)
+            if (fullPageLoader) fullPageLoader.style.display = 'none';
+            // Show main container visibility
+            const containerElement = document.querySelector('.container');
+            if (containerElement) containerElement.style.visibility = 'visible';
+
+
+            // --- Check Data & Determine View ---
             if (filmsData.length > 0) {
-                dataSourceSection.classList.add('hidden'); // Hide the input section
+                // Data fetched successfully
                 
-                const urlParams = new URLSearchParams(window.location.search);
-                const filmTitleParam = urlParams.get('filmTitle');
-
                 if (filmTitleParam) {
-                    // If filmTitle param exists, try to show detail directly
-                    filmListView.classList.add('hidden'); // Hide list view
-                    filmDetailView.classList.remove('hidden'); // Show detail view
-                    backToListButton.classList.add('hidden'); // Hide back button for direct embeds
-
-                    // Hide auto-refresh buttons in detail view for direct embeds
-                    detailRefreshDataButton.classList.add('hidden');
-                    detailStartAutoRefreshButton.classList.add('hidden');
-                    detailStopAutoRefreshButton.classList.add('hidden');
-
+                    // Embed Mode: Try to show detail directly
+                    filmListView.classList.add('hidden'); 
+                    filmDetailView.classList.remove('hidden'); 
+                    
                     const decodedFilmTitle = decodeURIComponent(filmTitleParam);
                     const filmObjectFromParam = filmsData.find(film => film[headers[0]] === decodedFilmTitle);
                     if (filmObjectFromParam) {
-                        showFilmDetail(filmObjectFromParam); // Pass the film object
+                        showFilmDetail(filmObjectFromParam); 
                     } else {
-                        console.warn(`Film with title "${decodedFilmTitle}" not found. Showing list view.`);
-                        // If film not found, fallback to list view and enable auto-refresh
-                        filmListView.classList.remove('hidden');
-                        filmDetailView.classList.add('hidden');
-                        filterFilms();
-                        startAutoRefresh();
+                        // Film not found in embed mode
+                        filmDetailView.innerHTML = `
+                            <div class="text-center p-6 bg-red-800 text-white rounded-lg">
+                                <h2 class="text-xl font-bold mb-2">Film Not Found</h2>
+                                <p>The film specified in the URL could not be found in the current data set.</p>
+                            </div>
+                        `;
                     }
+                    startAutoRefresh(); // Keep auto refresh running for embeds
+                    
                 } else {
-                    // If no filmTitle param, show list view and start auto-refresh
+                    // Main Portal Mode: Show list view
                     filmListView.classList.remove('hidden');
                     filmDetailView.classList.add('hidden');
                     filterFilms();
                     startAutoRefresh();
                 }
             } else {
-                if (errorMessage.classList.contains('hidden')) {
-                     errorMessage.textContent = 'No film data found in the CSV. Please check your sheet content or if it\'s empty.';
-                     errorMessage.classList.remove('hidden');
+                // Data fetch failed or returned no data (Error UI already handled in fetchCSVData for embeds)
+                if (!filmTitleParam) {
+                    // For main view, display a prominent error message
+                    const headerElement = document.querySelector('.header');
+                    if (headerElement) headerElement.style.borderBottom = 'none';
+
+                    document.querySelector('.container').innerHTML = `
+                        <header class="header"><h1 class="text-3xl font-bold">7 Palms Filmmaker Portal</h1></header>
+                        <div class="text-center p-8 bg-red-100 rounded-lg">
+                            <h2 class="text-2xl font-bold text-red-700 mb-4">DATA FAILED TO LOAD</h2>
+                            <p class="text-gray-700 mb-4">The portal could not retrieve data from the Google Sheet. This is likely due to **CORS restrictions** or the sheet not being publicly published.</p>
+                            <p class="text-sm text-gray-500">Ensure the Google Sheet is **correctly published to the web as CSV**.</p>
+                            <p class="text-xs mt-3">URL: ${GOOGLE_SHEET_CSV_URL}</p>
+                        </div>
+                    `;
                 }
             }
         }
@@ -943,15 +1007,13 @@
         async function handleRefreshData() {
             console.log('Refresh Data initiated.');
             const url = GOOGLE_SHEET_CSV_URL; // Use the hardcoded URL for refresh
-            if (!url) { // Added check for URL existence
+            if (!url) {
                 console.error("Cannot refresh: Google Sheet URL is not defined.");
-                errorMessage.textContent = "Cannot refresh: Google Sheet URL is not defined.";
-                errorMessage.classList.remove('hidden');
                 showMessageBox('Cannot refresh: No URL provided.', 'error');
                 return;
             }
 
-            const oldFilmsData = JSON.stringify(filmsData); // Store current data as string for comparison
+            const oldFilmsData = JSON.stringify(filmsData);
             filmsData = await fetchCSVData(url);
 
             if (filmsData.length > 0) {
@@ -960,42 +1022,47 @@
                     const currentFilmTitle = detailFilmTitle.textContent;
                     const currentFilmObject = filmsData.find(f => f[headers[0]] === currentFilmTitle);
                     if (currentFilmObject) {
-                        showFilmDetail(currentFilmObject); // Pass the film object
+                        showFilmDetail(currentFilmObject);
                     } else {
                         showFilmList();
                     }
                 }
-                // Only show success message if data actually changed
                 if (oldFilmsData !== JSON.stringify(filmsData)) {
                     showMessageBox('Data refreshed successfully!', 'success');
                 }
                 console.log('Data refreshed successfully.');
             } else {
-                if (errorMessage.classList.contains('hidden')) {
-                    errorMessage.textContent = 'No film data found after refresh. The sheet might be empty or inaccessible.';
-                }
-                errorMessage.classList.remove('hidden');
                 showMessageBox('Data refresh failed or returned no data.', 'error');
             }
         }
 
-        // Event Listeners
-        // Removed loadDataButton event listener as it's no longer needed
-        refreshDataButton.addEventListener('click', handleRefreshData);
-        startAutoRefreshButton.addEventListener('click', startAutoRefresh);
-        stopAutoRefreshButton.addEventListener('click', stopAutoRefresh);
-        backToListButton.addEventListener('click', showFilmList);
-        searchBar.addEventListener('input', filterFilms);
+        // Event Listeners (Must be attached *after* DOM elements exist)
 
-        // New event listeners for detail view buttons
-        document.getElementById('detailRefreshDataButton').addEventListener('click', handleRefreshData);
-        document.getElementById('detailStartAutoRefreshButton').addEventListener('click', startAutoRefresh);
-        document.getElementById('detailStopAutoRefreshButton').addEventListener('click', stopAutoRefresh);
+        function attachEventListeners() {
+            // Main view buttons
+            document.getElementById('refreshDataButton').addEventListener('click', handleRefreshData);
+            document.getElementById('startAutoRefreshButton').addEventListener('click', startAutoRefresh);
+            document.getElementById('stopAutoRefreshButton').addEventListener('click', stopAutoRefresh);
+            document.getElementById('searchBar').addEventListener('input', filterFilms);
+
+            // Detail view buttons
+            document.getElementById('backToListButton').addEventListener('click', showFilmList);
+            document.getElementById('detailRefreshDataButton').addEventListener('click', handleRefreshData);
+            document.getElementById('detailStartAutoRefreshButton').addEventListener('click', startAutoRefresh);
+            document.getElementById('detailStopAutoRefreshButton').addEventListener('click', stopAutoRefresh);
+        }
 
 
         // Initial load of data when the page loads
-        window.onload = function() {
-            handleLoadData();
+        window.onload = async function() {
+            // Run handleLoadData() which manages the entire UI flow
+            await handleLoadData();
+            
+            // Only attach listeners if we are NOT showing the critical error screen
+            const errorScreen = document.querySelector('.fixed.inset-0.flex');
+            if (!errorScreen) {
+                attachEventListeners();
+            }
         };
     </script>
 </body>
